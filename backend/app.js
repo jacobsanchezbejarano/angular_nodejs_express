@@ -1,7 +1,18 @@
 const express = require("express");
 const bodyParser = require("body-parser");
+const mongoose = require("mongoose");
+const dotenv = require('dotenv');
+dotenv.config();
+const Post = require("./models/post");
 
 const app = express();
+
+mongoose.connect(process.env.MONGO_URI).then(() => {
+  console.log("Connected to db")
+})
+.catch(() => {
+  console.log("Failed to connect to db");
+});
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
@@ -20,30 +31,39 @@ app.use((req, res, next) => {
 });
 
 app.post("/posts", (req, res, next) => {
-  const post = req.body;
-  console.log(post);
-  res.status(201).json({
-    message: 'Post added successfully'
+  const post = new Post({
+    title: req.body.title,
+    content: req.body.content
   });
+  post.save().then(createdPost => {
+    res.status(201).json({
+      message: 'Post added successfully',
+      postId: createdPost._id
+    });
+  });
+  
 });
 
 app.get("/posts", (req, res, next) => {
-  const posts = [
-    {
-      id: "fadf12421l",
-      title: "First server-side post",
-      content: "This is coming from the server"
-    },
-    {
-      id: "ksajflaj132",
-      title: "Second server-side post",
-      content: "This is coming from the server!"
-    }
-  ];
-  res.status(200).json({
-    message: "Posts fetched successfully!",
-    posts: posts
+  Post.find()
+  .then(docs => {
+    res.status(200).json({
+      message: "Posts fetched successfully!",
+      posts: docs
+    });
   });
+  
+});
+
+app.delete("/posts/:id", (req, res, next) => {
+  Post.deleteOne({_id: req.params.id})
+  .then(response => {
+    console.log(response);
+    res.status(200).json({
+      message: "Post deleted!"
+    });
+  });
+  
 });
 
 module.exports = app;
